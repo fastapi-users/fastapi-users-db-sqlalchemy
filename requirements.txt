@@ -1,0 +1,3 @@
+fastapi-users >= 6.1.2
+sqlalchemy >=1.3.23,<1.4
+databases[postgresql, sqlite] >=0.3.2,<0.5
