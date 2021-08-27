@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.types import CHAR, TypeDecorator
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
 
 
 class GUID(TypeDecorator):  # pragma: no cover
