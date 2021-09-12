@@ -107,7 +107,8 @@ async def test_queries(sqlalchemy_user_db: SQLAlchemyUserDatabase[UserDB]):
 
     # Exception when inserting non-nullable fields
     with pytest.raises(sqlite3.IntegrityError):
-        wrong_user = UserDB(hashed_password="aaa")
+        # Use construct to bypass Pydantic validation
+        wrong_user = UserDB.construct(hashed_password="aaa")
         await sqlalchemy_user_db.create(wrong_user)
 
     # Unknown user
