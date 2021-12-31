@@ -10,7 +10,7 @@ from sqlalchemy.ext.declarative import declared_attr
 
 from fastapi_users_db_sqlalchemy.guid import GUID
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 class SQLAlchemyBaseUserTable:
