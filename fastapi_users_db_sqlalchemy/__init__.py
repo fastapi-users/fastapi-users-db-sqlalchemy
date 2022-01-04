@@ -138,6 +138,7 @@ class SQLAlchemyUserDatabase(BaseUserDatabase[UD]):
     async def delete(self, user: UD) -> None:
         statement = delete(self.user_model, self.user_model.id == user.id)
         await self.session.execute(statement)
+        await self.session.commit()
 
     async def _get_user(self, statement: Select) -> Optional[UD]:
         if self.oauth_account_model is not None:
