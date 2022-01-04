@@ -1,14 +1,14 @@
-import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 
 import pytest
-import sqlalchemy
-from databases import Database
 from fastapi_users.authentication.strategy.db.models import BaseAccessToken
 from pydantic import UUID4
+from sqlalchemy import exc
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
+from sqlalchemy.orm import sessionmaker
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 from fastapi_users_db_sqlalchemy.access_token import (
@@ -19,6 +19,10 @@ from fastapi_users_db_sqlalchemy.access_token import (
 
 class AccessToken(BaseAccessToken):
     pass
+
+
+def create_async_session_maker(engine: AsyncEngine):
+    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -38,36 +42,25 @@ async def sqlalchemy_access_token_db(
     class UserTable(SQLAlchemyBaseUserTable, Base):
         pass
 
-    DATABASE_URL = "sqlite:///./test-sqlalchemy-access-token.db"
-    database = Database(DATABASE_URL)
-
-    engine = sqlalchemy.create_engine(
+    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-access-token.db"
+    engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )
-    Base.metadata.create_all(engine)
+    sessionmaker = create_async_session_maker(engine)
 
-    await database.connect()
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
 
-    # Create user
-    query = UserTable.__table__.insert()
-    await database.execute(
-        query,
-        {
-            "id": user_id,
-            "email": "lancelot@camelot.bt",
-            "hashed_password": "guinevere",
-            "is_active": True,
-            "is_verified": False,
-            "is_superuser": False,
-        },
-    )
+        async with sessionmaker() as session:
+            user = UserTable(
+                id=user_id, email="lancelot@camelot.bt", hashed_password="guinevere"
+            )
+            session.add(user)
+            await session.commit()
 
-    yield SQLAlchemyAccessTokenDatabase(
-        AccessToken, database, AccessTokenTable.__table__
-    )
+            yield SQLAlchemyAccessTokenDatabase(AccessToken, session, AccessTokenTable)
 
-    Base.metadata.drop_all(engine)
-    await database.disconnect()
+        await connection.run_sync(Base.metadata.drop_all)
 
 
 @pytest.mark.asyncio
@@ -111,13 +104,24 @@ async def test_queries(
     )
     assert access_token_by_token is None
 
-    # Exception when inserting existing token
-    with pytest.raises(sqlite3.IntegrityError):
-        await sqlalchemy_access_token_db.create(access_token_db)
-
     # Delete token
     await sqlalchemy_access_token_db.delete(access_token_db)
     deleted_access_token = await sqlalchemy_access_token_db.get_by_token(
         access_token_db.token
     )
     assert deleted_access_token is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.db
+async def test_insert_existing_token(
+    sqlalchemy_access_token_db: SQLAlchemyAccessTokenDatabase[AccessToken],
+    user_id: UUID4,
+):
+    access_token = AccessToken(token="TOKEN", user_id=user_id)
+    await sqlalchemy_access_token_db.create(access_token)
+
+    with pytest.raises(exc.IntegrityError):
+        await sqlalchemy_access_token_db.create(
+            AccessToken(token="TOKEN", user_id=user_id)
+        )

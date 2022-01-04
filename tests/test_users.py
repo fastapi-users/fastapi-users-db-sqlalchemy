@@ -1,19 +1,21 @@
-import sqlite3
 from typing import AsyncGenerator
 
 import pytest
-import sqlalchemy
-from databases import Database
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, exc
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
 
 from fastapi_users_db_sqlalchemy import (
-    NotSetOAuthAccountTableError,
     SQLAlchemyBaseOAuthAccountTable,
     SQLAlchemyBaseUserTable,
     SQLAlchemyUserDatabase,
 )
 from tests.conftest import UserDB, UserDBOAuth
+
+
+def create_async_session_maker(engine: AsyncEngine):
+    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @pytest.fixture
@@ -23,20 +25,20 @@ async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
     class User(SQLAlchemyBaseUserTable, Base):
         first_name = Column(String, nullable=True)
 
-    DATABASE_URL = "sqlite:///./test-sqlalchemy-user.db"
-    database = Database(DATABASE_URL)
+    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-user.db"
 
-    engine = sqlalchemy.create_engine(
+    engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )
-    Base.metadata.create_all(engine)
+    sessionmaker = create_async_session_maker(engine)
 
-    await database.connect()
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
 
-    yield SQLAlchemyUserDatabase(UserDB, database, User.__table__)
+        async with sessionmaker() as session:
+            yield SQLAlchemyUserDatabase(UserDB, session, User)
 
-    Base.metadata.drop_all(engine)
-    await database.disconnect()
+        await connection.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture
@@ -45,25 +47,25 @@ async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, N
 
     class User(SQLAlchemyBaseUserTable, Base):
         first_name = Column(String, nullable=True)
+        oauth_accounts = relationship("OAuthAccount")
 
     class OAuthAccount(SQLAlchemyBaseOAuthAccountTable, Base):
         pass
 
-    DATABASE_URL = "sqlite:///./test-sqlalchemy-user-oauth.db"
-    database = Database(DATABASE_URL)
+    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-user-oauth.db"
 
-    engine = sqlalchemy.create_engine(
+    engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )
-    Base.metadata.create_all(engine)
+    sessionmaker = create_async_session_maker(engine)
 
-    await database.connect()
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
 
-    yield SQLAlchemyUserDatabase(
-        UserDBOAuth, database, User.__table__, OAuthAccount.__table__
-    )
+        async with sessionmaker() as session:
+            yield SQLAlchemyUserDatabase(UserDBOAuth, session, User, OAuthAccount)
 
-    Base.metadata.drop_all(engine)
+        await connection.run_sync(Base.metadata.drop_all)
 
 
 @pytest.mark.asyncio
@@ -101,16 +103,6 @@ async def test_queries(sqlalchemy_user_db: SQLAlchemyUserDatabase[UserDB]):
     assert email_user is not None
     assert email_user.id == user_db.id
 
-    # Exception when inserting existing email
-    with pytest.raises(sqlite3.IntegrityError):
-        await sqlalchemy_user_db.create(user)
-
-    # Exception when inserting non-nullable fields
-    with pytest.raises(sqlite3.IntegrityError):
-        # Use construct to bypass Pydantic validation
-        wrong_user = UserDB.construct(hashed_password="aaa")
-        await sqlalchemy_user_db.create(wrong_user)
-
     # Unknown user
     unknown_user = await sqlalchemy_user_db.get_by_email("galahad@camelot.bt")
     assert unknown_user is None
@@ -120,19 +112,22 @@ async def test_queries(sqlalchemy_user_db: SQLAlchemyUserDatabase[UserDB]):
     deleted_user = await sqlalchemy_user_db.get(user.id)
     assert deleted_user is None
 
-    # Exception when creating/updating a OAuth user
-    user_oauth = UserDBOAuth(
+
+@pytest.mark.asyncio
+@pytest.mark.db
+async def test_insert_existing_email(
+    sqlalchemy_user_db: SQLAlchemyUserDatabase[UserDB],
+):
+    user = UserDB(
         email="lancelot@camelot.bt",
         hashed_password="guinevere",
     )
-    with pytest.raises(NotSetOAuthAccountTableError):
-        await sqlalchemy_user_db.create(user_oauth)
-    with pytest.raises(NotSetOAuthAccountTableError):
-        await sqlalchemy_user_db.update(user_oauth)
+    await sqlalchemy_user_db.create(user)
 
-    # Exception when trying to get by OAuth account
-    with pytest.raises(NotSetOAuthAccountTableError):
-        await sqlalchemy_user_db.get_by_oauth_account("foo", "bar")
+    with pytest.raises(exc.IntegrityError):
+        await sqlalchemy_user_db.create(
+            UserDB(email=user.email, hashed_password="guinevere")
+        )
 
 
 @pytest.mark.asyncio

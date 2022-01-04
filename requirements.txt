@@ -1,3 +1,2 @@
 fastapi-users >= 9.1.0
-sqlalchemy >=1.4
-databases[postgresql, sqlite] >=0.5
+sqlalchemy[mypy] >=1.4

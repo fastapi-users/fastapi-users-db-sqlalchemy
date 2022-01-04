@@ -1,12 +1,24 @@
-"""FastAPI Users database adapter for SQLAlchemy + encode/databases."""
-from typing import Mapping, Optional, Type
+"""FastAPI Users database adapter for SQLAlchemy."""
+from typing import Optional, Type
 
-from databases import Database
 from fastapi_users.db.base import BaseUserDatabase
 from fastapi_users.models import UD
 from pydantic import UUID4
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table, func, select
+from sqlalchemy import (
+    Boolean,
+    Column,
+    ForeignKey,
+    Integer,
+    String,
+    delete,
+    func,
+    select,
+    update,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql import Select
 
 from fastapi_users_db_sqlalchemy.guid import GUID
 
@@ -44,127 +56,96 @@ class SQLAlchemyBaseOAuthAccountTable:
         return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
 
 
-class NotSetOAuthAccountTableError(Exception):
-    """
-    OAuth table was not set in DB adapter but was needed.
-
-    Raised when trying to create/update a user with OAuth accounts set
-    but no table were specified in the DB adapter.
-    """
-
-    pass
-
-
 class SQLAlchemyUserDatabase(BaseUserDatabase[UD]):
     """
     Database adapter for SQLAlchemy.
 
     :param user_db_model: Pydantic model of a DB representation of a user.
-    :param database: `Database` instance from `encode/databases`.
-    :param users: SQLAlchemy users table instance.
-    :param oauth_accounts: Optional SQLAlchemy OAuth accounts table instance.
+    :param session: SQLAlchemy session instance.
+    :param user_model: SQLAlchemy user model.
+    :param oauth_account_model: Optional SQLAlchemy OAuth accounts model.
     """
 
-    database: Database
-    users: Table
-    oauth_accounts: Optional[Table]
+    session: AsyncSession
+    user_model: Type[SQLAlchemyBaseUserTable]
+    oauth_account_model: Optional[Type[SQLAlchemyBaseOAuthAccountTable]]
 
     def __init__(
         self,
         user_db_model: Type[UD],
-        database: Database,
-        users: Table,
-        oauth_accounts: Optional[Table] = None,
+        session: AsyncSession,
+        user_model: Type[SQLAlchemyBaseUserTable],
+        oauth_account_model: Optional[Type[SQLAlchemyBaseOAuthAccountTable]] = None,
     ):
         super().__init__(user_db_model)
-        self.database = database
-        self.users = users
-        self.oauth_accounts = oauth_accounts
+        self.session = session
+        self.user_model = user_model
+        self.oauth_account_model = oauth_account_model
 
     async def get(self, id: UUID4) -> Optional[UD]:
-        query = self.users.select().where(self.users.c.id == id)
-        user = await self.database.fetch_one(query)
-        return await self._make_user(user) if user else None
+        statement = select(self.user_model).where(self.user_model.id == id)
+        return await self._get_user(statement)
 
     async def get_by_email(self, email: str) -> Optional[UD]:
-        query = self.users.select().where(
-            func.lower(self.users.c.email) == func.lower(email)
+        statement = select(self.user_model).where(
+            func.lower(self.user_model.email) == func.lower(email)
         )
-        user = await self.database.fetch_one(query)
-        return await self._make_user(user) if user else None
+        return await self._get_user(statement)
 
     async def get_by_oauth_account(self, oauth: str, account_id: str) -> Optional[UD]:
-        if self.oauth_accounts is not None:
-            query = (
-                select([self.users])
-                .select_from(self.users.join(self.oauth_accounts))
-                .where(self.oauth_accounts.c.oauth_name == oauth)
-                .where(self.oauth_accounts.c.account_id == account_id)
+        if self.oauth_account_model is not None:
+            statement = (
+                select(self.user_model)
+                .join(self.oauth_account_model)
+                .where(self.oauth_account_model.oauth_name == oauth)
+                .where(self.oauth_account_model.account_id == account_id)
             )
-            user = await self.database.fetch_one(query)
-            return await self._make_user(user) if user else None
-        raise NotSetOAuthAccountTableError()
+            return await self._get_user(statement)
 
     async def create(self, user: UD) -> UD:
-        user_dict = user.dict()
-        oauth_accounts_values = None
+        user_model = self.user_model(**user.dict(exclude={"oauth_accounts"}))
+        self.session.add(user_model)
 
-        if "oauth_accounts" in user_dict:
-            oauth_accounts_values = []
+        if self.oauth_account_model is not None:
+            for oauth_account in user.oauth_accounts:
+                oauth_account_model = self.oauth_account_model(
+                    **oauth_account.dict(), user_id=user.id
+                )
+                self.session.add(oauth_account_model)
 
-            oauth_accounts = user_dict.pop("oauth_accounts")
-            for oauth_account in oauth_accounts:
-                oauth_accounts_values.append({"user_id": user.id, **oauth_account})
-
-        query = self.users.insert()
-        await self.database.execute(query, user_dict)
-
-        if oauth_accounts_values is not None:
-            if self.oauth_accounts is None:
-                raise NotSetOAuthAccountTableError()
-            query = self.oauth_accounts.insert()
-            await self.database.execute_many(query, oauth_accounts_values)
-
+        await self.session.commit()
         return user
 
     async def update(self, user: UD) -> UD:
-        user_dict = user.dict()
+        user_model = await self.session.get(self.user_model, user.id)
+        for key, value in user.dict(exclude={"oauth_accounts"}).items():
+            setattr(user_model, key, value)
+        self.session.add(user_model)
 
-        if "oauth_accounts" in user_dict:
-            if self.oauth_accounts is None:
-                raise NotSetOAuthAccountTableError()
+        if self.oauth_account_model is not None:
+            for oauth_account in user.oauth_accounts:
+                statement = update(
+                    self.oauth_account_model,
+                    whereclause=self.oauth_account_model.id == oauth_account.id,
+                    values={**oauth_account.dict(), "user_id": user.id},
+                )
+                await self.session.execute(statement)
 
-            delete_query = self.oauth_accounts.delete().where(
-                self.oauth_accounts.c.user_id == user.id
-            )
-            await self.database.execute(delete_query)
+        await self.session.commit()
 
-            oauth_accounts_values = []
-            oauth_accounts = user_dict.pop("oauth_accounts")
-            for oauth_account in oauth_accounts:
-                oauth_accounts_values.append({"user_id": user.id, **oauth_account})
-
-            insert_query = self.oauth_accounts.insert()
-            await self.database.execute_many(insert_query, oauth_accounts_values)
-
-        update_query = (
-            self.users.update().where(self.users.c.id == user.id).values(user_dict)
-        )
-        await self.database.execute(update_query)
         return user
 
     async def delete(self, user: UD) -> None:
-        query = self.users.delete().where(self.users.c.id == user.id)
-        await self.database.execute(query)
+        statement = delete(self.user_model, self.user_model.id == user.id)
+        await self.session.execute(statement)
 
-    async def _make_user(self, user: Mapping) -> UD:
-        user_dict = {**user}
+    async def _get_user(self, statement: Select) -> Optional[UD]:
+        if self.oauth_account_model is not None:
+            statement = statement.options(joinedload("oauth_accounts"))
 
-        if self.oauth_accounts is not None:
-            query = self.oauth_accounts.select().where(
-                self.oauth_accounts.c.user_id == user["id"]
-            )
-            oauth_accounts = await self.database.fetch_all(query)
-            user_dict["oauth_accounts"] = [{**a} for a in oauth_accounts]
+        results = await self.session.execute(statement)
+        user = results.first()
+        if user is None:
+            return None
 
-        return self.user_db_model(**user_dict)
+        return self.user_db_model.from_orm(user[0])
