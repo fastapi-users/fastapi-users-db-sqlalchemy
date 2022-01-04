@@ -22,7 +22,7 @@ from sqlalchemy.sql import Select
 
 from fastapi_users_db_sqlalchemy.guid import GUID
 
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 
 class SQLAlchemyBaseUserTable:
