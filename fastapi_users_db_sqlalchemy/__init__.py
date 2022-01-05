@@ -62,71 +62,71 @@ class SQLAlchemyUserDatabase(BaseUserDatabase[UD]):
 
     :param user_db_model: Pydantic model of a DB representation of a user.
     :param session: SQLAlchemy session instance.
-    :param user_model: SQLAlchemy user model.
-    :param oauth_account_model: Optional SQLAlchemy OAuth accounts model.
+    :param user_table: SQLAlchemy user model.
+    :param oauth_account_table: Optional SQLAlchemy OAuth accounts model.
     """
 
     session: AsyncSession
-    user_model: Type[SQLAlchemyBaseUserTable]
-    oauth_account_model: Optional[Type[SQLAlchemyBaseOAuthAccountTable]]
+    user_table: Type[SQLAlchemyBaseUserTable]
+    oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]]
 
     def __init__(
         self,
         user_db_model: Type[UD],
         session: AsyncSession,
-        user_model: Type[SQLAlchemyBaseUserTable],
-        oauth_account_model: Optional[Type[SQLAlchemyBaseOAuthAccountTable]] = None,
+        user_table: Type[SQLAlchemyBaseUserTable],
+        oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]] = None,
     ):
         super().__init__(user_db_model)
         self.session = session
-        self.user_model = user_model
-        self.oauth_account_model = oauth_account_model
+        self.user_table = user_table
+        self.oauth_account_table = oauth_account_table
 
     async def get(self, id: UUID4) -> Optional[UD]:
-        statement = select(self.user_model).where(self.user_model.id == id)
+        statement = select(self.user_table).where(self.user_table.id == id)
         return await self._get_user(statement)
 
     async def get_by_email(self, email: str) -> Optional[UD]:
-        statement = select(self.user_model).where(
-            func.lower(self.user_model.email) == func.lower(email)
+        statement = select(self.user_table).where(
+            func.lower(self.user_table.email) == func.lower(email)
         )
         return await self._get_user(statement)
 
     async def get_by_oauth_account(self, oauth: str, account_id: str) -> Optional[UD]:
-        if self.oauth_account_model is not None:
+        if self.oauth_account_table is not None:
             statement = (
-                select(self.user_model)
-                .join(self.oauth_account_model)
-                .where(self.oauth_account_model.oauth_name == oauth)
-                .where(self.oauth_account_model.account_id == account_id)
+                select(self.user_table)
+                .join(self.oauth_account_table)
+                .where(self.oauth_account_table.oauth_name == oauth)
+                .where(self.oauth_account_table.account_id == account_id)
             )
             return await self._get_user(statement)
 
     async def create(self, user: UD) -> UD:
-        user_model = self.user_model(**user.dict(exclude={"oauth_accounts"}))
-        self.session.add(user_model)
+        user_table = self.user_table(**user.dict(exclude={"oauth_accounts"}))
+        self.session.add(user_table)
 
-        if self.oauth_account_model is not None:
+        if self.oauth_account_table is not None:
             for oauth_account in user.oauth_accounts:
-                oauth_account_model = self.oauth_account_model(
+                oauth_account_table = self.oauth_account_table(
                     **oauth_account.dict(), user_id=user.id
                 )
-                self.session.add(oauth_account_model)
+                self.session.add(oauth_account_table)
 
         await self.session.commit()
         return user
 
     async def update(self, user: UD) -> UD:
-        user_model = await self.session.get(self.user_model, user.id)
+        user_table = await self.session.get(self.user_table, user.id)
         for key, value in user.dict(exclude={"oauth_accounts"}).items():
-            setattr(user_model, key, value)
-        self.session.add(user_model)
+            setattr(user_table, key, value)
+        self.session.add(user_table)
 
-        if self.oauth_account_model is not None:
+        if self.oauth_account_table is not None:
             for oauth_account in user.oauth_accounts:
                 statement = update(
-                    self.oauth_account_model,
-                    whereclause=self.oauth_account_model.id == oauth_account.id,
+                    self.oauth_account_table,
+                    whereclause=self.oauth_account_table.id == oauth_account.id,
                     values={**oauth_account.dict(), "user_id": user.id},
                 )
                 await self.session.execute(statement)
@@ -136,11 +136,11 @@ class SQLAlchemyUserDatabase(BaseUserDatabase[UD]):
         return user
 
     async def delete(self, user: UD) -> None:
-        statement = delete(self.user_model, self.user_model.id == user.id)
+        statement = delete(self.user_table, self.user_table.id == user.id)
         await self.session.execute(statement)
 
     async def _get_user(self, statement: Select) -> Optional[UD]:
-        if self.oauth_account_model is not None:
+        if self.oauth_account_table is not None:
             statement = statement.options(joinedload("oauth_accounts"))
 
         results = await self.session.execute(statement)

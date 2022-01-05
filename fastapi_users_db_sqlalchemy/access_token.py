@@ -35,7 +35,7 @@ class SQLAlchemyAccessTokenDatabase(AccessTokenDatabase, Generic[A]):
         self,
         access_token_model: Type[A],
         session: AsyncSession,
-        access_token_table: SQLAlchemyBaseAccessTokenTable,
+        access_token_table: Type[SQLAlchemyBaseAccessTokenTable],
     ):
         self.access_token_model = access_token_model
         self.session = session
