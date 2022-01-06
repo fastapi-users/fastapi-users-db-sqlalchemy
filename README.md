@@ -1,4 +1,4 @@
-# FastAPI Users - Database adapter for SQLAlchemy + encode/databases
+# FastAPI Users - Database adapter for SQLAlchemy ORM
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/frankie567/fastapi-users/master/logo.svg?sanitize=true" alt="FastAPI Users">
@@ -26,7 +26,7 @@
 
 Add quickly a registration and authentication system to your [FastAPI](https://fastapi.tiangolo.com/) project. **FastAPI Users** is designed to be as customizable and adaptable as possible.
 
-**Sub-package for SQLAlchemy + encode/databases support in FastAPI Users.**
+**Sub-package for SQLAlchemy ORM support in FastAPI Users.**
 
 ## Development
 
