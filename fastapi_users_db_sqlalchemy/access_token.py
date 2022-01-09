@@ -69,6 +69,7 @@ class SQLAlchemyAccessTokenDatabase(AccessTokenDatabase, Generic[A]):
             .values(access_token.dict())
         )
         await self.session.execute(statement)
+        await self.session.commit()
         return access_token
 
     async def delete(self, access_token: A) -> None:
@@ -76,3 +77,4 @@ class SQLAlchemyAccessTokenDatabase(AccessTokenDatabase, Generic[A]):
             self.access_token_table, self.access_token_table.token == access_token.token
         )
         await self.session.execute(statement)
+        await self.session.commit()
