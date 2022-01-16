@@ -114,7 +114,7 @@ class SQLAlchemyUserDatabase(BaseUserDatabase[UD]):
                 self.session.add(oauth_account_table)
 
         await self.session.commit()
-        return user
+        return await self.get(user.id)
 
     async def update(self, user: UD) -> UD:
         user_table = await self.session.get(self.user_table, user.id)
@@ -133,7 +133,7 @@ class SQLAlchemyUserDatabase(BaseUserDatabase[UD]):
 
         await self.session.commit()
 
-        return user
+        return await self.get(user.id)
 
     async def delete(self, user: UD) -> None:
         statement = delete(self.user_table, self.user_table.id == user.id)
