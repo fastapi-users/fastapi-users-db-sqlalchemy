@@ -1,8 +1,9 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Type
 
 import pytest
+from fastapi_users import models
 from sqlalchemy import Column, String, exc
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -14,8 +15,29 @@ from fastapi_users_db_sqlalchemy import (
 from tests.conftest import UserDB, UserDBOAuth
 
 
-def create_async_session_maker(engine: AsyncEngine):
-    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async def create_database(
+    database_url: str,
+    base_class: Type[DeclarativeMeta],
+    user_db_model: Type[models.BaseUserDB],
+    user_table: Type[SQLAlchemyBaseUserTable],
+    oauth_account_table: Type[SQLAlchemyBaseOAuthAccountTable] = None,
+) -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
+    engine = create_async_engine(
+        database_url, connect_args={"check_same_thread": False}
+    )
+    async_sessionmaker = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with engine.begin() as connection:
+        await connection.run_sync(base_class.metadata.create_all)
+
+        async with async_sessionmaker() as session:
+            yield SQLAlchemyUserDatabase(
+                user_db_model, session, user_table, oauth_account_table
+            )
+
+        await connection.run_sync(base_class.metadata.drop_all)
 
 
 @pytest.fixture
@@ -25,20 +47,29 @@ async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
     class User(SQLAlchemyBaseUserTable, Base):
         first_name = Column(String, nullable=True)
 
-    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-user.db"
+    async for session in create_database(
+        database_url="sqlite+aiosqlite:///./test-sqlalchemy-user.db",
+        base_class=Base,
+        user_db_model=UserDB,
+        user_table=User,
+    ):
+        yield session
 
-    engine = create_async_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False}
-    )
-    sessionmaker = create_async_session_maker(engine)
 
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+@pytest.fixture
+async def sqlalchemy_user_db_custom() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
+    Base: DeclarativeMeta = declarative_base()
 
-        async with sessionmaker() as session:
-            yield SQLAlchemyUserDatabase(UserDB, session, User)
+    class User(SQLAlchemyBaseUserTable, Base):
+        first_name = Column(String, nullable=False, default="default_username")
 
-        await connection.run_sync(Base.metadata.drop_all)
+    async for session in create_database(
+        database_url="sqlite+aiosqlite:///./test-sqlalchemy-user-custom.db",
+        base_class=Base,
+        user_db_model=UserDB,
+        user_table=User,
+    ):
+        yield session
 
 
 @pytest.fixture
@@ -52,20 +83,14 @@ async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, N
     class OAuthAccount(SQLAlchemyBaseOAuthAccountTable, Base):
         pass
 
-    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-user-oauth.db"
-
-    engine = create_async_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False}
-    )
-    sessionmaker = create_async_session_maker(engine)
-
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-
-        async with sessionmaker() as session:
-            yield SQLAlchemyUserDatabase(UserDBOAuth, session, User, OAuthAccount)
-
-        await connection.run_sync(Base.metadata.drop_all)
+    async for session in create_database(
+        database_url="sqlite+aiosqlite:///./test-sqlalchemy-user-oauth.db",
+        base_class=Base,
+        user_db_model=UserDBOAuth,
+        user_table=User,
+        oauth_account_table=OAuthAccount,
+    ):
+        yield session
 
 
 @pytest.mark.asyncio
@@ -133,20 +158,35 @@ async def test_insert_existing_email(
 @pytest.mark.asyncio
 @pytest.mark.db
 async def test_queries_custom_fields(
-    sqlalchemy_user_db: SQLAlchemyUserDatabase[UserDB],
+    sqlalchemy_user_db_custom: SQLAlchemyUserDatabase[UserDB],
 ):
-    """It should output custom fields in query result."""
+    """It should output custom fields in query result, even if they are not
+    in query but have default values."""
     user = UserDB(
         email="lancelot@camelot.bt",
         hashed_password="guinevere",
         first_name="Lancelot",
     )
-    await sqlalchemy_user_db.create(user)
 
-    id_user = await sqlalchemy_user_db.get(user.id)
-    assert id_user is not None
-    assert id_user.id == user.id
-    assert id_user.first_name == user.first_name
+    db_user = await sqlalchemy_user_db_custom.create(user)
+
+    assert db_user is not None
+    assert db_user.id == user.id
+    assert db_user.first_name == user.first_name
+
+    await sqlalchemy_user_db_custom.delete(user)
+
+    user = UserDB(
+        email="lancelot@camelot.bt",
+        hashed_password="guinevere",
+    )
+
+    db_user = await sqlalchemy_user_db_custom.create(user)
+
+    assert db_user is not None
+    assert db_user.id == user.id
+    assert db_user.first_name is not None
+    assert db_user.first_name == "default_username"
 
 
 @pytest.mark.asyncio
