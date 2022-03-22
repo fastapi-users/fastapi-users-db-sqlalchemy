@@ -7,6 +7,7 @@ requests
 isort
 pytest-asyncio
 flake8-docstrings
+greenlet
 black
 mypy
 codecov
