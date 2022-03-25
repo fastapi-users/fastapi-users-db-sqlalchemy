@@ -30,13 +30,11 @@ async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
     engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )
-    sessionmaker = create_async_session_maker(engine)
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
-        async with sessionmaker() as session:
-            yield SQLAlchemyUserDatabase(UserDB, session, User)
+        yield SQLAlchemyUserDatabase(UserDB, engine, User)
 
         await connection.run_sync(Base.metadata.drop_all)
 
@@ -57,13 +55,11 @@ async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, N
     engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )
-    sessionmaker = create_async_session_maker(engine)
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
-        async with sessionmaker() as session:
-            yield SQLAlchemyUserDatabase(UserDBOAuth, session, User, OAuthAccount)
+        yield SQLAlchemyUserDatabase(UserDBOAuth, engine, User, OAuthAccount)
 
         await connection.run_sync(Base.metadata.drop_all)
 
