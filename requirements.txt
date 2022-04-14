@@ -1,2 +1,2 @@
 fastapi-users >= 9.1.0
-sqlalchemy[mypy] >=1.4
+sqlalchemy[asyncio,mypy] >=1.4

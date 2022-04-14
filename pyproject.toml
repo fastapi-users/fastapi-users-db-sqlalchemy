@@ -31,7 +31,7 @@ description-file = "README.md"
 requires-python = ">=3.7"
 requires = [
     "fastapi-users >= 9.1.0",
-    "sqlalchemy >=1.4",
+    "sqlalchemy[asyncio] >=1.4",
 ]
 
 [tool.flit.metadata.urls]
