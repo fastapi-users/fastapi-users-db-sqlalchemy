@@ -1,49 +1,58 @@
+import uuid
 from datetime import datetime
-from typing import Generic, Optional, Type
+from typing import Any, Dict, Generic, Optional, Type, TypeVar
 
-from fastapi_users.authentication.strategy.db import A, AccessTokenDatabase
-from sqlalchemy import Column, DateTime, ForeignKey, String, delete, select, update
+from fastapi_users.authentication.strategy.db import AccessTokenDatabase
+from fastapi_users.models import ID
+from sqlalchemy import Column, ForeignKey, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
 
-from fastapi_users_db_sqlalchemy.guid import GUID
+from fastapi_users_db_sqlalchemy.generics import GUID, TIMESTAMPAware, now_utc
 
 
-class SQLAlchemyBaseAccessTokenTable:
+class SQLAlchemyBaseAccessTokenTable(Generic[ID]):
     """Base SQLAlchemy access token table definition."""
 
     __tablename__ = "accesstoken"
 
-    token = Column(String(length=43), primary_key=True)
-    created_at = Column(DateTime(timezone=True), index=True, nullable=False)
+    token: str = Column(String(length=43), primary_key=True)
+    created_at: datetime = Column(
+        TIMESTAMPAware, index=True, nullable=False, default=now_utc
+    )
+    user_id: ID
 
+
+AP_SQLALCHEMY = TypeVar("AP_SQLALCHEMY", bound=SQLAlchemyBaseAccessTokenTable)
+
+
+class SQLAlchemyBaseAccessTokenTableUUID(SQLAlchemyBaseAccessTokenTable[uuid.UUID]):
     @declared_attr
     def user_id(cls):
         return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
 
 
-class SQLAlchemyAccessTokenDatabase(AccessTokenDatabase, Generic[A]):
+class SQLAlchemyAccessTokenDatabase(
+    Generic[AP_SQLALCHEMY], AccessTokenDatabase[AP_SQLALCHEMY]
+):
     """
     Access token database adapter for SQLAlchemy.
 
-    :param access_token_model: Pydantic model of a DB representation of an access token.
     :param session: SQLAlchemy session instance.
     :param access_token_table: SQLAlchemy access token model.
     """
 
     def __init__(
         self,
-        access_token_model: Type[A],
         session: AsyncSession,
-        access_token_table: Type[SQLAlchemyBaseAccessTokenTable],
+        access_token_table: Type[AP_SQLALCHEMY],
     ):
-        self.access_token_model = access_token_model
         self.session = session
         self.access_token_table = access_token_table
 
     async def get_by_token(
         self, token: str, max_age: Optional[datetime] = None
-    ) -> Optional[A]:
+    ) -> Optional[AP_SQLALCHEMY]:
         statement = select(self.access_token_table).where(
             self.access_token_table.token == token
         )
@@ -54,27 +63,25 @@ class SQLAlchemyAccessTokenDatabase(AccessTokenDatabase, Generic[A]):
         access_token = results.first()
         if access_token is None:
             return None
-        return self.access_token_model.from_orm(access_token[0])
+        return access_token[0]
 
-    async def create(self, access_token: A) -> A:
-        access_token_db = self.access_token_table(**access_token.dict())
-        self.session.add(access_token_db)
+    async def create(self, create_dict: Dict[str, Any]) -> AP_SQLALCHEMY:
+        access_token = self.access_token_table(**create_dict)
+        self.session.add(access_token)
         await self.session.commit()
+        await self.session.refresh(access_token)
         return access_token
 
-    async def update(self, access_token: A) -> A:
-        statement = (
-            update(self.access_token_table)
-            .where(self.access_token_table.token == access_token.token)
-            .values(access_token.dict())
-        )
-        await self.session.execute(statement)
+    async def update(
+        self, access_token: AP_SQLALCHEMY, update_dict: Dict[str, Any]
+    ) -> AP_SQLALCHEMY:
+        for key, value in update_dict.items():
+            setattr(access_token, key, value)
+        self.session.add(access_token)
         await self.session.commit()
+        await self.session.refresh(access_token)
         return access_token
 
-    async def delete(self, access_token: A) -> None:
-        statement = delete(
-            self.access_token_table, self.access_token_table.token == access_token.token
-        )
-        await self.session.execute(statement)
+    async def delete(self, access_token: AP_SQLALCHEMY) -> None:
+        await self.session.delete(access_token)
         await self.session.commit()

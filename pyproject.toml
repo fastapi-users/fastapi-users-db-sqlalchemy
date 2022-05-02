@@ -1,6 +1,9 @@
 [tool.isort]
 profile = "black"
 
+[tool.mypy]
+plugins = "sqlalchemy.ext.mypy.plugin"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--ignore=test_build.py"

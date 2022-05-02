@@ -1,31 +1,23 @@
 import asyncio
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import pytest
-from fastapi_users import models
+from fastapi_users import schemas
 
 
-class User(models.BaseUser):
+class User(schemas.BaseUser):
     first_name: Optional[str]
 
 
-class UserCreate(models.BaseUserCreate):
+class UserCreate(schemas.BaseUserCreate):
     first_name: Optional[str]
 
 
-class UserUpdate(models.BaseUserUpdate):
+class UserUpdate(schemas.BaseUserUpdate):
     pass
 
 
-class UserDB(User, models.BaseUserDB):
-    pass
-
-
-class UserOAuth(User, models.BaseOAuthAccountMixin):
-    pass
-
-
-class UserDBOAuth(UserOAuth, UserDB):
+class UserOAuth(User, schemas.BaseOAuthAccountMixin):
     pass
 
 
@@ -38,22 +30,22 @@ def event_loop():
 
 
 @pytest.fixture
-def oauth_account1() -> models.BaseOAuthAccount:
-    return models.BaseOAuthAccount(
-        oauth_name="service1",
-        access_token="TOKEN",
-        expires_at=1579000751,
-        account_id="user_oauth1",
-        account_email="king.arthur@camelot.bt",
-    )
+def oauth_account1() -> Dict[str, Any]:
+    return {
+        "oauth_name": "service1",
+        "access_token": "TOKEN",
+        "expires_at": 1579000751,
+        "account_id": "user_oauth1",
+        "account_email": "king.arthur@camelot.bt",
+    }
 
 
 @pytest.fixture
-def oauth_account2() -> models.BaseOAuthAccount:
-    return models.BaseOAuthAccount(
-        oauth_name="service2",
-        access_token="TOKEN",
-        expires_at=1579000751,
-        account_id="user_oauth2",
-        account_email="king.arthur@camelot.bt",
-    )
+def oauth_account2() -> Dict[str, Any]:
+    return {
+        "oauth_name": "service2",
+        "access_token": "TOKEN",
+        "expires_at": 1579000751,
+        "account_id": "user_oauth2",
+        "account_email": "king.arthur@camelot.bt",
+    }

@@ -1,12 +1,14 @@
 import uuid
+from datetime import datetime, timezone
 
 from pydantic import UUID4
+from sqlalchemy import CHAR, TIMESTAMP, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.types import CHAR, TypeDecorator
 
 
 class GUID(TypeDecorator):  # pragma: no cover
-    """Platform-independent GUID type.
+    """
+    Platform-independent GUID type.
 
     Uses PostgreSQL's UUID type, otherwise uses
     CHAR(36), storing as regular strings.
@@ -42,3 +44,24 @@ class GUID(TypeDecorator):  # pragma: no cover
             if not isinstance(value, uuid.UUID):
                 value = uuid.UUID(value)
             return value
+
+
+def now_utc():
+    return datetime.now(timezone.utc)
+
+
+class TIMESTAMPAware(TypeDecorator):  # pragma: no cover
+    """
+    MySQL and SQLite will always return naive-Python datetimes.
+
+    We store everything as UTC, but we want to have
+    only offset-aware Python datetimes, even with MySQL and SQLite.
+    """
+
+    impl = TIMESTAMP
+    cache_ok = True
+
+    def process_result_value(self, value: datetime, dialect):
+        if dialect.name != "postgresql":
+            return value.replace(tzinfo=timezone.utc)
+        return value
