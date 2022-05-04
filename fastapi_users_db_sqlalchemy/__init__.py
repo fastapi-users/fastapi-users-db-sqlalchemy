@@ -64,7 +64,6 @@ class SQLAlchemyUserDatabase(
     """
     Database adapter for SQLAlchemy.
 
-    :param user_db_model: Pydantic model of a DB representation of a user.
     :param session: SQLAlchemy session instance.
     :param user_table: SQLAlchemy user model.
     :param oauth_account_table: Optional SQLAlchemy OAuth accounts model.
