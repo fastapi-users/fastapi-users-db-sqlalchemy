@@ -11,7 +11,7 @@ from sqlalchemy.sql import Select
 
 from fastapi_users_db_sqlalchemy.generics import GUID
 
-__version__ = "4.0.1"
+__version__ = "4.0.2"
 
 UUID_ID = uuid.UUID
 
