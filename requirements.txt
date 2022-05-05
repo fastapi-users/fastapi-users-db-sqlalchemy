@@ -1,2 +1,2 @@
-fastapi-users >= 9.1.0
+fastapi-users >= 10.0.0
 sqlalchemy[asyncio,mypy] >=1.4
