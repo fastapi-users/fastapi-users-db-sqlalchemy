@@ -3,7 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List
 import pytest
 from sqlalchemy import Column, String, exc
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
 from fastapi_users_db_sqlalchemy import (
@@ -18,14 +18,14 @@ def create_async_session_maker(engine: AsyncEngine):
     return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
-Base: DeclarativeMeta = declarative_base()
+Base = declarative_base()
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     first_name = Column(String, nullable=True)
 
 
-OAuthBase: DeclarativeMeta = declarative_base()
+OAuthBase = declarative_base()
 
 
 class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, OAuthBase):

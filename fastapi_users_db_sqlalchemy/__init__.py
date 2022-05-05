@@ -1,12 +1,12 @@
 """FastAPI Users database adapter for SQLAlchemy."""
 import uuid
-from typing import Any, Dict, Generic, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, Type
 
 from fastapi_users.db.base import BaseUserDatabase
 from fastapi_users.models import ID, OAP, UP
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import declarative_mixin, declared_attr
 from sqlalchemy.sql import Select
 
 from fastapi_users_db_sqlalchemy.generics import GUID
@@ -16,42 +16,67 @@ __version__ = "4.0.1"
 UUID_ID = uuid.UUID
 
 
+@declarative_mixin
 class SQLAlchemyBaseUserTable(Generic[ID]):
     """Base SQLAlchemy users table definition."""
 
     __tablename__ = "user"
 
-    id: ID
-    email: str = Column(String(length=320), unique=True, index=True, nullable=False)
-    hashed_password: str = Column(String(length=1024), nullable=False)
-    is_active: bool = Column(Boolean, default=True, nullable=False)
-    is_superuser: bool = Column(Boolean, default=False, nullable=False)
-    is_verified: bool = Column(Boolean, default=False, nullable=False)
+    if TYPE_CHECKING:  # pragma: no cover
+        id: ID
+        email: str
+        hashed_password: str
+        is_active: bool
+        is_superuser: bool
+        is_verified: bool
+    else:
+        email: str = Column(String(length=320), unique=True, index=True, nullable=False)
+        hashed_password: str = Column(String(length=1024), nullable=False)
+        is_active: bool = Column(Boolean, default=True, nullable=False)
+        is_superuser: bool = Column(Boolean, default=False, nullable=False)
+        is_verified: bool = Column(Boolean, default=False, nullable=False)
 
 
+@declarative_mixin
 class SQLAlchemyBaseUserTableUUID(SQLAlchemyBaseUserTable[UUID_ID]):
-    id: UUID_ID = Column(GUID, primary_key=True, default=uuid.uuid4)
+    if TYPE_CHECKING:  # pragma: no cover
+        id: UUID_ID
+    else:
+        id: UUID_ID = Column(GUID, primary_key=True, default=uuid.uuid4)
 
 
+@declarative_mixin
 class SQLAlchemyBaseOAuthAccountTable(Generic[ID]):
     """Base SQLAlchemy OAuth account table definition."""
 
     __tablename__ = "oauth_account"
 
-    id: ID
-    oauth_name: str = Column(String(length=100), index=True, nullable=False)
-    access_token: str = Column(String(length=1024), nullable=False)
-    expires_at: Optional[int] = Column(Integer, nullable=True)
-    refresh_token: Optional[str] = Column(String(length=1024), nullable=True)
-    account_id: str = Column(String(length=320), index=True, nullable=False)
-    account_email: str = Column(String(length=320), nullable=False)
+    if TYPE_CHECKING:  # pragma: no cover
+        id: ID
+        oauth_name: str
+        access_token: str
+        expires_at: Optional[int]
+        refresh_token: Optional[str]
+        account_id: str
+        account_email: str
+    else:
+        oauth_name: str = Column(String(length=100), index=True, nullable=False)
+        access_token: str = Column(String(length=1024), nullable=False)
+        expires_at: Optional[int] = Column(Integer, nullable=True)
+        refresh_token: Optional[str] = Column(String(length=1024), nullable=True)
+        account_id: str = Column(String(length=320), index=True, nullable=False)
+        account_email: str = Column(String(length=320), nullable=False)
 
 
+@declarative_mixin
 class SQLAlchemyBaseOAuthAccountTableUUID(SQLAlchemyBaseOAuthAccountTable[UUID_ID]):
-    id: UUID_ID = Column(GUID, primary_key=True, default=uuid.uuid4)
+    if TYPE_CHECKING:  # pragma: no cover
+        id: UUID_ID
+    else:
+        id: UUID_ID = Column(GUID, primary_key=True, default=uuid.uuid4)
 
     @declared_attr
-    def user_id(cls):
+    def user_id(cls) -> Column[GUID]:
         return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
 
 

@@ -6,30 +6,39 @@ from fastapi_users.authentication.strategy.db import AP, AccessTokenDatabase
 from fastapi_users.models import ID
 from sqlalchemy import Column, ForeignKey, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import declarative_mixin, declared_attr
 
 from fastapi_users_db_sqlalchemy.generics import GUID, TIMESTAMPAware, now_utc
 
 
+@declarative_mixin
 class SQLAlchemyBaseAccessTokenTable(Generic[ID]):
     """Base SQLAlchemy access token table definition."""
 
     __tablename__ = "accesstoken"
 
-    token: str = Column(String(length=43), primary_key=True)
-    created_at: datetime = Column(
-        TIMESTAMPAware, index=True, nullable=False, default=now_utc
-    )
-    user_id: ID
-
-
-class SQLAlchemyBaseAccessTokenTableUUID(SQLAlchemyBaseAccessTokenTable[uuid.UUID]):
-    if TYPE_CHECKING:
-        user_id: uuid.UUID  # pragma: no cover
+    if TYPE_CHECKING:  # pragma: no cover
+        token: str
+        created_at: datetime
+        user_id: ID
     else:
+        token: str = Column(String(length=43), primary_key=True)
+        created_at: datetime = Column(
+            TIMESTAMPAware, index=True, nullable=False, default=now_utc
+        )
+
+
+@declarative_mixin
+class SQLAlchemyBaseAccessTokenTableUUID(SQLAlchemyBaseAccessTokenTable[uuid.UUID]):
+    if TYPE_CHECKING:  # pragma: no cover
+        user_id: uuid.UUID
+    else:
+
         @declared_attr
-        def user_id(cls):
-            return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
+        def user_id(cls) -> Column[GUID]:
+            return Column(
+                GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False
+            )
 
 
 class SQLAlchemyAccessTokenDatabase(Generic[AP], AccessTokenDatabase[AP]):

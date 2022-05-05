@@ -15,7 +15,7 @@ class GUID(TypeDecorator):  # pragma: no cover
     """
 
     class UUIDChar(CHAR):
-        python_type = UUID4
+        python_type = UUID4  # type: ignore
 
     impl = UUIDChar
     cache_ok = True
