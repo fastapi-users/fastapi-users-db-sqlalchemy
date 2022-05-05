@@ -1,9 +1,9 @@
 """FastAPI Users database adapter for SQLAlchemy."""
 import uuid
-from typing import Any, Dict, Generic, Optional, Type, TypeVar
+from typing import Any, Dict, Generic, Optional, Type
 
 from fastapi_users.db.base import BaseUserDatabase
-from fastapi_users.models import ID, OAP
+from fastapi_users.models import ID, OAP, UP
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
@@ -27,9 +27,6 @@ class SQLAlchemyBaseUserTable(Generic[ID]):
     is_active: bool = Column(Boolean, default=True, nullable=False)
     is_superuser: bool = Column(Boolean, default=False, nullable=False)
     is_verified: bool = Column(Boolean, default=False, nullable=False)
-
-
-UP_SQLALCHEMY = TypeVar("UP_SQLALCHEMY", bound=SQLAlchemyBaseUserTable)
 
 
 class SQLAlchemyBaseUserTableUUID(SQLAlchemyBaseUserTable[UUID_ID]):
@@ -58,9 +55,7 @@ class SQLAlchemyBaseOAuthAccountTableUUID(SQLAlchemyBaseOAuthAccountTable[UUID_I
         return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
 
 
-class SQLAlchemyUserDatabase(
-    Generic[UP_SQLALCHEMY, ID], BaseUserDatabase[UP_SQLALCHEMY, ID]
-):
+class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
     """
     Database adapter for SQLAlchemy.
 
@@ -70,32 +65,30 @@ class SQLAlchemyUserDatabase(
     """
 
     session: AsyncSession
-    user_table: Type[UP_SQLALCHEMY]
+    user_table: Type[UP]
     oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]]
 
     def __init__(
         self,
         session: AsyncSession,
-        user_table: Type[UP_SQLALCHEMY],
+        user_table: Type[UP],
         oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]] = None,
     ):
         self.session = session
         self.user_table = user_table
         self.oauth_account_table = oauth_account_table
 
-    async def get(self, id: ID) -> Optional[UP_SQLALCHEMY]:
+    async def get(self, id: ID) -> Optional[UP]:
         statement = select(self.user_table).where(self.user_table.id == id)
         return await self._get_user(statement)
 
-    async def get_by_email(self, email: str) -> Optional[UP_SQLALCHEMY]:
+    async def get_by_email(self, email: str) -> Optional[UP]:
         statement = select(self.user_table).where(
             func.lower(self.user_table.email) == func.lower(email)
         )
         return await self._get_user(statement)
 
-    async def get_by_oauth_account(
-        self, oauth: str, account_id: str
-    ) -> Optional[UP_SQLALCHEMY]:
+    async def get_by_oauth_account(self, oauth: str, account_id: str) -> Optional[UP]:
         if self.oauth_account_table is None:
             raise NotImplementedError()
 
@@ -107,16 +100,14 @@ class SQLAlchemyUserDatabase(
         )
         return await self._get_user(statement)
 
-    async def create(self, create_dict: Dict[str, Any]) -> UP_SQLALCHEMY:
+    async def create(self, create_dict: Dict[str, Any]) -> UP:
         user = self.user_table(**create_dict)
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
         return user
 
-    async def update(
-        self, user: UP_SQLALCHEMY, update_dict: Dict[str, Any]
-    ) -> UP_SQLALCHEMY:
+    async def update(self, user: UP, update_dict: Dict[str, Any]) -> UP:
         for key, value in update_dict.items():
             setattr(user, key, value)
         self.session.add(user)
@@ -124,13 +115,11 @@ class SQLAlchemyUserDatabase(
         await self.session.refresh(user)
         return user
 
-    async def delete(self, user: UP_SQLALCHEMY) -> None:
+    async def delete(self, user: UP) -> None:
         await self.session.delete(user)
         await self.session.commit()
 
-    async def add_oauth_account(
-        self, user: UP_SQLALCHEMY, create_dict: Dict[str, Any]
-    ) -> UP_SQLALCHEMY:
+    async def add_oauth_account(self, user: UP, create_dict: Dict[str, Any]) -> UP:
         if self.oauth_account_table is None:
             raise NotImplementedError()
 
@@ -145,8 +134,8 @@ class SQLAlchemyUserDatabase(
         return user
 
     async def update_oauth_account(
-        self, user: UP_SQLALCHEMY, oauth_account: OAP, update_dict: Dict[str, Any]
-    ) -> UP_SQLALCHEMY:
+        self, user: UP, oauth_account: OAP, update_dict: Dict[str, Any]
+    ) -> UP:
         if self.oauth_account_table is None:
             raise NotImplementedError()
 
@@ -157,7 +146,7 @@ class SQLAlchemyUserDatabase(
         await self.session.refresh(user)
         return user
 
-    async def _get_user(self, statement: Select) -> Optional[UP_SQLALCHEMY]:
+    async def _get_user(self, statement: Select) -> Optional[UP]:
         results = await self.session.execute(statement)
         user = results.first()
         if user is None:
