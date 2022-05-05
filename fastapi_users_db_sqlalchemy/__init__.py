@@ -3,7 +3,7 @@ import uuid
 from typing import Any, Dict, Generic, Optional, Type, TypeVar
 
 from fastapi_users.db.base import BaseUserDatabase
-from fastapi_users.models import ID, OAP, UP
+from fastapi_users.models import ID, OAP
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
@@ -157,7 +157,7 @@ class SQLAlchemyUserDatabase(
         await self.session.refresh(user)
         return user
 
-    async def _get_user(self, statement: Select) -> Optional[UP]:
+    async def _get_user(self, statement: Select) -> Optional[UP_SQLALCHEMY]:
         results = await self.session.execute(statement)
         user = results.first()
         if user is None:
