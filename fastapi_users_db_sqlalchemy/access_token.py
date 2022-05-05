@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Generic, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, Type
 
 from fastapi_users.authentication.strategy.db import AP, AccessTokenDatabase
 from fastapi_users.models import ID
@@ -24,9 +24,12 @@ class SQLAlchemyBaseAccessTokenTable(Generic[ID]):
 
 
 class SQLAlchemyBaseAccessTokenTableUUID(SQLAlchemyBaseAccessTokenTable[uuid.UUID]):
-    @declared_attr
-    def user_id(cls):
-        return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
+    if TYPE_CHECKING:
+        user_id: uuid.UUID  # pragma: no cover
+    else:
+        @declared_attr
+        def user_id(cls):
+            return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
 
 
 class SQLAlchemyAccessTokenDatabase(Generic[AP], AccessTokenDatabase[AP]):

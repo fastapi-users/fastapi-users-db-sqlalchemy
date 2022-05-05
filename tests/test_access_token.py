@@ -61,7 +61,6 @@ async def sqlalchemy_access_token_db(
 
 
 @pytest.mark.asyncio
-@pytest.mark.db
 async def test_queries(
     sqlalchemy_access_token_db: SQLAlchemyAccessTokenDatabase[AccessToken],
     user_id: UUID4,
@@ -113,7 +112,6 @@ async def test_queries(
 
 
 @pytest.mark.asyncio
-@pytest.mark.db
 async def test_insert_existing_token(
     sqlalchemy_access_token_db: SQLAlchemyAccessTokenDatabase[AccessToken],
     user_id: UUID4,

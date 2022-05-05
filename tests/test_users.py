@@ -74,7 +74,6 @@ async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, N
 
 
 @pytest.mark.asyncio
-@pytest.mark.db
 async def test_queries(sqlalchemy_user_db: SQLAlchemyUserDatabase[User, UUID_ID]):
     user_create = {
         "email": "lancelot@camelot.bt",
@@ -128,7 +127,6 @@ async def test_queries(sqlalchemy_user_db: SQLAlchemyUserDatabase[User, UUID_ID]
 
 
 @pytest.mark.asyncio
-@pytest.mark.db
 async def test_insert_existing_email(
     sqlalchemy_user_db: SQLAlchemyUserDatabase[User, UUID_ID],
 ):
@@ -143,7 +141,6 @@ async def test_insert_existing_email(
 
 
 @pytest.mark.asyncio
-@pytest.mark.db
 async def test_queries_custom_fields(
     sqlalchemy_user_db: SQLAlchemyUserDatabase[User, UUID_ID],
 ):
@@ -162,7 +159,6 @@ async def test_queries_custom_fields(
 
 
 @pytest.mark.asyncio
-@pytest.mark.db
 async def test_queries_oauth(
     sqlalchemy_user_db_oauth: SQLAlchemyUserDatabase[UserOAuth, UUID_ID],
     oauth_account1: Dict[str, Any],
