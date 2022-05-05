@@ -33,7 +33,7 @@ classifiers = [
 description-file = "README.md"
 requires-python = ">=3.7"
 requires = [
-    "fastapi-users >= 9.1.0",
+    "fastapi-users >= 10.0.0",
     "sqlalchemy[asyncio] >=1.4",
 ]
 
