@@ -23,7 +23,7 @@ Base = declarative_base()
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
-    first_name = Column(String, nullable=True)
+    first_name = Column(String(255), nullable=True)
 
 
 OAuthBase = declarative_base()
