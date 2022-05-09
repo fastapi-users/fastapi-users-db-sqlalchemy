@@ -39,9 +39,9 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python_version }}
     - name: Install dependencies
@@ -50,6 +50,7 @@ jobs:
         pip install -r requirements.dev.txt
     - name: Test with pytest
       env:
+        DATABASE_URL: ${{ matrix. database_url }}
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: |
         pytest --cov=fastapi_users_db_sqlalchemy/
