@@ -1,6 +1,8 @@
 -r requirements.txt
 
 aiosqlite
+asyncpg
+aiomysql
 flake8
 pytest
 requests

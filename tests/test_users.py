@@ -12,6 +12,7 @@ from fastapi_users_db_sqlalchemy import (
     SQLAlchemyBaseUserTableUUID,
     SQLAlchemyUserDatabase,
 )
+from tests.conftest import DATABASE_URL
 
 
 def create_async_session_maker(engine: AsyncEngine):
@@ -39,8 +40,6 @@ class UserOAuth(SQLAlchemyBaseUserTableUUID, OAuthBase):
 
 @pytest.fixture
 async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
-    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-user.db"
-
     engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )
@@ -57,8 +56,6 @@ async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
 
 @pytest.fixture
 async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
-    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-user-oauth.db"
-
     engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )

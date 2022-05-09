@@ -1,8 +1,13 @@
 import asyncio
+import os
 from typing import Any, Dict, Optional
 
 import pytest
 from fastapi_users import schemas
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "sqlite+aiosqlite:///./test-sqlalchemy-user.db"
+)
 
 
 class User(schemas.BaseUser):

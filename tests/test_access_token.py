@@ -14,6 +14,7 @@ from fastapi_users_db_sqlalchemy.access_token import (
     SQLAlchemyAccessTokenDatabase,
     SQLAlchemyBaseAccessTokenTableUUID,
 )
+from tests.conftest import DATABASE_URL
 
 Base = declarative_base()
 
@@ -39,7 +40,6 @@ def user_id() -> UUID4:
 async def sqlalchemy_access_token_db(
     user_id: UUID4,
 ) -> AsyncGenerator[SQLAlchemyAccessTokenDatabase[AccessToken], None]:
-    DATABASE_URL = "sqlite+aiosqlite:///./test-sqlalchemy-access-token.db"
     engine = create_async_engine(
         DATABASE_URL, connect_args={"check_same_thread": False}
     )

@@ -6,9 +6,37 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: fastapiusers
+          POSTGRES_PASSWORD: fastapiuserspassword
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mariadb:
+        image: mariadb
+        ports:
+          - 3306:3306
+        env:
+          MARIADB_ROOT_PASSWORD: fastapiuserspassword
+
     strategy:
       matrix:
         python_version: [3.7, 3.8, 3.9, '3.10']
+        database_url: [
+          'sqlite+aiosqlite:///./test-sqlalchemy-user.db',
+          'postgresql+asyncpg://fastapiusers@fastapiuserspassword@localhost:5432/test-sqlalchemy-user',
+          'mysql+aiomysql://root@fastapiuserspassword@localhost:3306/test-sqlalchemy-user',
+        ]
 
     steps:
     - uses: actions/checkout@v1
