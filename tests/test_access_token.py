@@ -46,15 +46,16 @@ async def sqlalchemy_access_token_db(
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
-        async with sessionmaker() as session:
-            user = User(
-                id=user_id, email="lancelot@camelot.bt", hashed_password="guinevere"
-            )
-            session.add(user)
-            await session.commit()
+    async with sessionmaker() as session:
+        user = User(
+            id=user_id, email="lancelot@camelot.bt", hashed_password="guinevere"
+        )
+        session.add(user)
+        await session.commit()
 
-            yield SQLAlchemyAccessTokenDatabase(session, AccessToken)
+        yield SQLAlchemyAccessTokenDatabase(session, AccessToken)
 
+    async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.drop_all)
 
 

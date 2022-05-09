@@ -46,9 +46,10 @@ async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
-        async with sessionmaker() as session:
-            yield SQLAlchemyUserDatabase(session, User)
+    async with sessionmaker() as session:
+        yield SQLAlchemyUserDatabase(session, User)
 
+    async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.drop_all)
 
 
@@ -60,10 +61,11 @@ async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, N
     async with engine.begin() as connection:
         await connection.run_sync(OAuthBase.metadata.create_all)
 
-        async with sessionmaker() as session:
-            yield SQLAlchemyUserDatabase(session, UserOAuth, OAuthAccount)
+    async with sessionmaker() as session:
+        yield SQLAlchemyUserDatabase(session, UserOAuth, OAuthAccount)
 
-        await connection.run_sync(Base.metadata.drop_all)
+    async with engine.begin() as connection:
+        await connection.run_sync(OAuthBase.metadata.drop_all)
 
 
 @pytest.mark.asyncio
@@ -127,6 +129,7 @@ async def test_insert_existing_email(
         "email": "lancelot@camelot.bt",
         "hashed_password": "guinevere",
     }
+    print("YO")
     await sqlalchemy_user_db.create(user_create)
 
     with pytest.raises(exc.IntegrityError):
