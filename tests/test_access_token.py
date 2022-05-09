@@ -40,9 +40,7 @@ def user_id() -> UUID4:
 async def sqlalchemy_access_token_db(
     user_id: UUID4,
 ) -> AsyncGenerator[SQLAlchemyAccessTokenDatabase[AccessToken], None]:
-    engine = create_async_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False}
-    )
+    engine = create_async_engine(DATABASE_URL)
     sessionmaker = create_async_session_maker(engine)
 
     async with engine.begin() as connection:

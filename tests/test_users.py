@@ -40,9 +40,7 @@ class UserOAuth(SQLAlchemyBaseUserTableUUID, OAuthBase):
 
 @pytest.fixture
 async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
-    engine = create_async_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False}
-    )
+    engine = create_async_engine(DATABASE_URL)
     sessionmaker = create_async_session_maker(engine)
 
     async with engine.begin() as connection:
@@ -56,9 +54,7 @@ async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
 
 @pytest.fixture
 async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
-    engine = create_async_engine(
-        DATABASE_URL, connect_args={"check_same_thread": False}
-    )
+    engine = create_async_engine(DATABASE_URL)
     sessionmaker = create_async_session_maker(engine)
 
     async with engine.begin() as connection:
