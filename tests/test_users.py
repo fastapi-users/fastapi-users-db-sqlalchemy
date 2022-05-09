@@ -34,7 +34,7 @@ class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, OAuthBase):
 
 
 class UserOAuth(SQLAlchemyBaseUserTableUUID, OAuthBase):
-    first_name = Column(String, nullable=True)
+    first_name = Column(String(255), nullable=True)
     oauth_accounts: List[OAuthAccount] = relationship("OAuthAccount", lazy="joined")
 
 
