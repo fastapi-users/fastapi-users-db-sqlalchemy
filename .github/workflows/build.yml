@@ -35,8 +35,8 @@ jobs:
         python_version: [3.7, 3.8, 3.9, '3.10']
         database_url: [
           'sqlite+aiosqlite:///./fastapiusers.db',
-          'postgresql+asyncpg://fastapiusers@fastapiuserspassword@localhost:5432/fastapiusers',
-          'mysql+aiomysql://root@fastapiuserspassword@localhost:3306/fastapiusers',
+          'postgresql+asyncpg://fastapiusers:fastapiuserspassword@localhost:5432/fastapiusers',
+          'mysql+aiomysql://root:fastapiuserspassword@localhost:3306/fastapiusers',
         ]
 
     steps:
