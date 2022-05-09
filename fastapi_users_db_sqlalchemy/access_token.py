@@ -24,7 +24,7 @@ class SQLAlchemyBaseAccessTokenTable(Generic[ID]):
     else:
         token: str = Column(String(length=43), primary_key=True)
         created_at: datetime = Column(
-            TIMESTAMPAware, index=True, nullable=False, default=now_utc
+            TIMESTAMPAware(timezone=True), index=True, nullable=False, default=now_utc
         )
 
 

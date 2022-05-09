@@ -76,7 +76,9 @@ async def test_queries(
     updated_access_token = await sqlalchemy_access_token_db.update(
         access_token, update_dict
     )
-    assert updated_access_token.created_at == update_dict["created_at"]
+    assert updated_access_token.created_at.replace(microsecond=0) == update_dict[
+        "created_at"
+    ].replace(microsecond=0)
 
     # Get by token
     access_token_by_token = await sqlalchemy_access_token_db.get_by_token(
