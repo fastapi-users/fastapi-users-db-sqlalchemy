@@ -30,6 +30,7 @@ jobs:
           MARIADB_ROOT_PASSWORD: fastapiuserspassword
 
     strategy:
+      fail-fast: false
       matrix:
         python_version: [3.7, 3.8, 3.9, '3.10']
         database_url: [
