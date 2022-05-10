@@ -20,7 +20,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import Select
 
-from fastapi_users_db_sqlalchemy.guid import GUID
+from fastapi_users_db_sqlalchemy.generics import GUID
 
 __version__ = "3.0.1"
 

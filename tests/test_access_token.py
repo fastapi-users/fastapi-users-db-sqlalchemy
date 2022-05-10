@@ -78,7 +78,10 @@ async def test_queries(
 
     # Update
     access_token_db.created_at = datetime.now(timezone.utc)
-    await sqlalchemy_access_token_db.update(access_token_db)
+    updated_access_token = await sqlalchemy_access_token_db.update(access_token_db)
+    assert updated_access_token.created_at.replace(
+        microsecond=0
+    ) == access_token_db.created_at.replace(microsecond=0)
 
     # Get by token
     access_token_by_token = await sqlalchemy_access_token_db.get_by_token(

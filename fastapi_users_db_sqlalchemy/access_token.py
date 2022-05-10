@@ -2,11 +2,11 @@ from datetime import datetime
 from typing import Generic, Optional, Type
 
 from fastapi_users.authentication.strategy.db import A, AccessTokenDatabase
-from sqlalchemy import Column, DateTime, ForeignKey, String, delete, select, update
+from sqlalchemy import Column, ForeignKey, String, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declared_attr
 
-from fastapi_users_db_sqlalchemy.guid import GUID
+from fastapi_users_db_sqlalchemy.generics import GUID, TIMESTAMPAware
 
 
 class SQLAlchemyBaseAccessTokenTable:
@@ -15,7 +15,7 @@ class SQLAlchemyBaseAccessTokenTable:
     __tablename__ = "accesstoken"
 
     token = Column(String(length=43), primary_key=True)
-    created_at = Column(DateTime(timezone=True), index=True, nullable=False)
+    created_at = Column(TIMESTAMPAware(timezone=True), index=True, nullable=False)
 
     @declared_attr
     def user_id(cls):
