@@ -129,7 +129,6 @@ async def test_insert_existing_email(
         "email": "lancelot@camelot.bt",
         "hashed_password": "guinevere",
     }
-    print("YO")
     await sqlalchemy_user_db.create(user_create)
 
     with pytest.raises(exc.IntegrityError):
