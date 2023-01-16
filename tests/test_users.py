@@ -3,8 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List
 import pytest
 from sqlalchemy import Column, String, exc
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 from fastapi_users_db_sqlalchemy import (
     UUID_ID,
