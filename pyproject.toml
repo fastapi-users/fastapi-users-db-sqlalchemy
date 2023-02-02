@@ -82,7 +82,7 @@ classifiers = [
 requires-python = ">=3.7"
 dependencies = [
     "fastapi-users >= 10.0.0",
-    "sqlalchemy[asyncio] >=1.4",
+    "sqlalchemy[asyncio] >=1.4,<2.0.0",
 ]
 
 [project.urls]
