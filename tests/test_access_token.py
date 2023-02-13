@@ -5,8 +5,13 @@ from typing import AsyncGenerator
 import pytest
 from pydantic import UUID4
 from sqlalchemy import exc
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import DeclarativeBase
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 from fastapi_users_db_sqlalchemy.access_token import (
@@ -15,7 +20,9 @@ from fastapi_users_db_sqlalchemy.access_token import (
 )
 from tests.conftest import DATABASE_URL
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class AccessToken(SQLAlchemyBaseAccessTokenTableUUID, Base):
@@ -27,7 +34,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 
 
 def create_async_session_maker(engine: AsyncEngine):
-    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @pytest.fixture

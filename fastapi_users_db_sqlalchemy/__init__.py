@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, Type
 
 from fastapi_users.db.base import BaseUserDatabase
 from fastapi_users.models import ID, OAP, UP
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, func, select
+from sqlalchemy import Boolean, ForeignKey, Integer, String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_mixin, declared_attr
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from sqlalchemy.sql import Select
 
 from fastapi_users_db_sqlalchemy.generics import GUID
@@ -16,7 +16,6 @@ __version__ = "4.0.5"
 UUID_ID = uuid.UUID
 
 
-@declarative_mixin
 class SQLAlchemyBaseUserTable(Generic[ID]):
     """Base SQLAlchemy users table definition."""
 
@@ -30,22 +29,28 @@ class SQLAlchemyBaseUserTable(Generic[ID]):
         is_superuser: bool
         is_verified: bool
     else:
-        email: str = Column(String(length=320), unique=True, index=True, nullable=False)
-        hashed_password: str = Column(String(length=1024), nullable=False)
-        is_active: bool = Column(Boolean, default=True, nullable=False)
-        is_superuser: bool = Column(Boolean, default=False, nullable=False)
-        is_verified: bool = Column(Boolean, default=False, nullable=False)
+        email: Mapped[str] = mapped_column(
+            String(length=320), unique=True, index=True, nullable=False
+        )
+        hashed_password: Mapped[str] = mapped_column(
+            String(length=1024), nullable=False
+        )
+        is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+        is_superuser: Mapped[bool] = mapped_column(
+            Boolean, default=False, nullable=False
+        )
+        is_verified: Mapped[bool] = mapped_column(
+            Boolean, default=False, nullable=False
+        )
 
 
-@declarative_mixin
 class SQLAlchemyBaseUserTableUUID(SQLAlchemyBaseUserTable[UUID_ID]):
     if TYPE_CHECKING:  # pragma: no cover
         id: UUID_ID
     else:
-        id: UUID_ID = Column(GUID, primary_key=True, default=uuid.uuid4)
+        id: Mapped[UUID_ID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
 
 
-@declarative_mixin
 class SQLAlchemyBaseOAuthAccountTable(Generic[ID]):
     """Base SQLAlchemy OAuth account table definition."""
 
@@ -60,24 +65,32 @@ class SQLAlchemyBaseOAuthAccountTable(Generic[ID]):
         account_id: str
         account_email: str
     else:
-        oauth_name: str = Column(String(length=100), index=True, nullable=False)
-        access_token: str = Column(String(length=1024), nullable=False)
-        expires_at: Optional[int] = Column(Integer, nullable=True)
-        refresh_token: Optional[str] = Column(String(length=1024), nullable=True)
-        account_id: str = Column(String(length=320), index=True, nullable=False)
-        account_email: str = Column(String(length=320), nullable=False)
+        oauth_name: Mapped[str] = mapped_column(
+            String(length=100), index=True, nullable=False
+        )
+        access_token: Mapped[str] = mapped_column(String(length=1024), nullable=False)
+        expires_at: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+        refresh_token: Mapped[Optional[str]] = mapped_column(
+            String(length=1024), nullable=True
+        )
+        account_id: Mapped[str] = mapped_column(
+            String(length=320), index=True, nullable=False
+        )
+        account_email: Mapped[str] = mapped_column(String(length=320), nullable=False)
 
 
-@declarative_mixin
 class SQLAlchemyBaseOAuthAccountTableUUID(SQLAlchemyBaseOAuthAccountTable[UUID_ID]):
     if TYPE_CHECKING:  # pragma: no cover
         id: UUID_ID
+        user_id: UUID_ID
     else:
-        id: UUID_ID = Column(GUID, primary_key=True, default=uuid.uuid4)
+        id: Mapped[UUID_ID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
 
-    @declared_attr
-    def user_id(cls) -> Column[GUID]:
-        return Column(GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False)
+        @declared_attr
+        def user_id(cls) -> Mapped[GUID]:
+            return mapped_column(
+                GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False
+            )
 
 
 class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
@@ -120,8 +133,8 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
         statement = (
             select(self.user_table)
             .join(self.oauth_account_table)
-            .where(self.oauth_account_table.oauth_name == oauth)
-            .where(self.oauth_account_table.account_id == account_id)
+            .where(self.oauth_account_table.oauth_name == oauth)  # type: ignore
+            .where(self.oauth_account_table.account_id == account_id)  # type: ignore
         )
         return await self._get_user(statement)
 
@@ -129,7 +142,6 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
         user = self.user_table(**create_dict)
         self.session.add(user)
         await self.session.commit()
-        await self.session.refresh(user)
         return user
 
     async def update(self, user: UP, update_dict: Dict[str, Any]) -> UP:
@@ -137,7 +149,6 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
             setattr(user, key, value)
         self.session.add(user)
         await self.session.commit()
-        await self.session.refresh(user)
         return user
 
     async def delete(self, user: UP) -> None:
@@ -148,6 +159,7 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
         if self.oauth_account_table is None:
             raise NotImplementedError()
 
+        await self.session.refresh(user)
         oauth_account = self.oauth_account_table(**create_dict)
         self.session.add(oauth_account)
         user.oauth_accounts.append(oauth_account)  # type: ignore
@@ -172,8 +184,4 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
 
     async def _get_user(self, statement: Select) -> Optional[UP]:
         results = await self.session.execute(statement)
-        user = results.first()
-        if user is None:
-            return None
-
-        return user[0]
+        return results.unique().scalar_one_or_none()

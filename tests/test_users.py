@@ -1,9 +1,18 @@
 from typing import Any, AsyncGenerator, Dict, List
 
 import pytest
-from sqlalchemy import Column, String, exc
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+from sqlalchemy import String, exc
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from fastapi_users_db_sqlalchemy import (
     UUID_ID,
@@ -15,17 +24,19 @@ from tests.conftest import DATABASE_URL
 
 
 def create_async_session_maker(engine: AsyncEngine):
-    return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    return async_sessionmaker(engine, expire_on_commit=False)
 
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
-    first_name = Column(String(255), nullable=True)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=True)
 
 
-OAuthBase = declarative_base()
+class OAuthBase(DeclarativeBase):
+    pass
 
 
 class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, OAuthBase):
@@ -33,8 +44,10 @@ class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, OAuthBase):
 
 
 class UserOAuth(SQLAlchemyBaseUserTableUUID, OAuthBase):
-    first_name = Column(String(255), nullable=True)
-    oauth_accounts: List[OAuthAccount] = relationship("OAuthAccount", lazy="joined")
+    first_name: Mapped[str] = mapped_column(String(255), nullable=True)
+    oauth_accounts: Mapped[List[OAuthAccount]] = relationship(
+        "OAuthAccount", lazy="joined"
+    )
 
 
 @pytest.fixture
