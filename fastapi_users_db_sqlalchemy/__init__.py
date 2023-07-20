@@ -6,7 +6,7 @@ from fastapi_users.db.base import BaseUserDatabase
 from fastapi_users.models import ID, OAP, UP
 from sqlalchemy import Boolean, ForeignKey, Integer, String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column
+from sqlalchemy.orm import Mapped, Session, declared_attr, mapped_column
 from sqlalchemy.sql import Select
 
 from fastapi_users_db_sqlalchemy.generics import GUID
@@ -184,4 +184,98 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
 
     async def _get_user(self, statement: Select) -> Optional[UP]:
         results = await self.session.execute(statement)
+        return results.unique().scalar_one_or_none()
+
+
+class SQLAlchemySynchronousUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
+    """
+    Database adapter for SQLAlchemy with synchronous session support.
+
+    :param session: SQLAlchemy session instance.
+    :param user_table: SQLAlchemy user model.
+    :param oauth_account_table: Optional SQLAlchemy OAuth accounts model.
+    """
+
+    session: Session
+    user_table: Type[UP]
+    oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]]
+
+    def __init__(
+        self,
+        session: Session,
+        user_table: Type[UP],
+        oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]] = None,
+    ):
+        self.session = session
+        self.user_table = user_table
+        self.oauth_account_table = oauth_account_table
+
+    async def get(self, id: ID) -> Optional[UP]:
+        statement = select(self.user_table).where(self.user_table.id == id)
+        return await self._get_user(statement)
+
+    async def get_by_email(self, email: str) -> Optional[UP]:
+        statement = select(self.user_table).where(
+            func.lower(self.user_table.email) == func.lower(email)
+        )
+        return await self._get_user(statement)
+
+    async def get_by_oauth_account(self, oauth: str, account_id: str) -> Optional[UP]:
+        if self.oauth_account_table is None:
+            raise NotImplementedError()
+
+        statement = (
+            select(self.user_table)
+            .join(self.oauth_account_table)
+            .where(self.oauth_account_table.oauth_name == oauth)  # type: ignore
+            .where(self.oauth_account_table.account_id == account_id)  # type: ignore
+        )
+        return await self._get_user(statement)
+
+    async def create(self, create_dict: Dict[str, Any]) -> UP:
+        user = self.user_table(**create_dict)
+        self.session.add(user)
+        self.session.commit()
+        return user
+
+    async def update(self, user: UP, update_dict: Dict[str, Any]) -> UP:
+        for key, value in update_dict.items():
+            setattr(user, key, value)
+        self.session.add(user)
+        self.session.commit()
+        return user
+
+    async def delete(self, user: UP) -> None:
+        self.session.delete(user)
+        self.session.commit()
+
+    async def add_oauth_account(self, user: UP, create_dict: Dict[str, Any]) -> UP:
+        if self.oauth_account_table is None:
+            raise NotImplementedError()
+
+        self.session.refresh(user)
+        oauth_account = self.oauth_account_table(**create_dict)
+        self.session.add(oauth_account)
+        user.oauth_accounts.append(oauth_account)  # type: ignore
+        self.session.add(user)
+
+        self.session.commit()
+
+        return user
+
+    async def update_oauth_account(
+        self, user: UP, oauth_account: OAP, update_dict: Dict[str, Any]
+    ) -> UP:
+        if self.oauth_account_table is None:
+            raise NotImplementedError()
+
+        for key, value in update_dict.items():
+            setattr(oauth_account, key, value)
+        self.session.add(oauth_account)
+        self.session.commit()
+
+        return user
+
+    async def _get_user(self, statement: Select) -> Optional[UP]:
+        results = self.session.execute(statement)
         return results.unique().scalar_one_or_none()
