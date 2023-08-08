@@ -73,6 +73,7 @@ class SQLAlchemyAccessTokenDatabase(Generic[AP], AccessTokenDatabase[AP]):
         access_token = self.access_token_table(**create_dict)
         self.session.add(access_token)
         await self.session.commit()
+        await self.session.refresh(access_token)
         return access_token
 
     async def update(self, access_token: AP, update_dict: Dict[str, Any]) -> AP:
@@ -80,6 +81,7 @@ class SQLAlchemyAccessTokenDatabase(Generic[AP], AccessTokenDatabase[AP]):
             setattr(access_token, key, value)
         self.session.add(access_token)
         await self.session.commit()
+        await self.session.refresh(access_token)
         return access_token
 
     async def delete(self, access_token: AP) -> None:

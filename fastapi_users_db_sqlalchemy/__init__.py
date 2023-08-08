@@ -142,6 +142,7 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
         user = self.user_table(**create_dict)
         self.session.add(user)
         await self.session.commit()
+        await self.session.refresh(user)
         return user
 
     async def update(self, user: UP, update_dict: Dict[str, Any]) -> UP:
@@ -149,6 +150,7 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
             setattr(user, key, value)
         self.session.add(user)
         await self.session.commit()
+        await self.session.refresh(user)
         return user
 
     async def delete(self, user: UP) -> None:
