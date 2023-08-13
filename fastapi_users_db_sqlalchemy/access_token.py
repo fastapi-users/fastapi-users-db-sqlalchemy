@@ -14,15 +14,15 @@ from fastapi_users_db_sqlalchemy.generics import GUID, TIMESTAMPAware, now_utc
 class SQLAlchemyBaseAccessTokenTable(Generic[ID]):
     """Base SQLAlchemy access token table definition."""
 
-    __tablename__ = "accesstoken"
+    __tablename__ = "at"
 
     if TYPE_CHECKING:  # pragma: no cover
         token: str
         created_at: datetime
         user_id: ID
     else:
-        token: Mapped[str] = mapped_column(String(length=43), primary_key=True)
-        created_at: Mapped[datetime] = mapped_column(
+        token: Mapped[str] = mapped_column("t", String(length=43), primary_key=True)
+        created_at: Mapped[datetime] = mapped_column("ca",
             TIMESTAMPAware(timezone=True), index=True, nullable=False, default=now_utc
         )
 
@@ -34,7 +34,7 @@ class SQLAlchemyBaseAccessTokenTableUUID(SQLAlchemyBaseAccessTokenTable[uuid.UUI
 
         @declared_attr
         def user_id(cls) -> Mapped[GUID]:
-            return mapped_column(
+            return mapped_column("ui",
                 GUID, ForeignKey("user.id", ondelete="cascade"), nullable=False
             )
 
