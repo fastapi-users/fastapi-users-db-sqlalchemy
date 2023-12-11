@@ -186,4 +186,5 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
 
     async def _get_user(self, statement: Select) -> Optional[UP]:
         results = await self.session.execute(statement)
+        await self.session.rollback()
         return results.unique().scalar_one_or_none()
