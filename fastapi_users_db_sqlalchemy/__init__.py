@@ -104,13 +104,13 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
 
     session: AsyncSession
     user_table: Type[UP]
-    oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]]
+    oauth_account_table: Optional[Type[OAP]]
 
     def __init__(
         self,
         session: AsyncSession,
         user_table: Type[UP],
-        oauth_account_table: Optional[Type[SQLAlchemyBaseOAuthAccountTable]] = None,
+        oauth_account_table: Optional[Type[OAP]] = None,
     ):
         self.session = session
         self.user_table = user_table
