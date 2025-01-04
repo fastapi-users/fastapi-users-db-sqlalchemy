@@ -23,12 +23,12 @@ class SQLAlchemyBaseUserTable(Generic[ID]):
     __tablename__ = "user"
 
     if TYPE_CHECKING:  # pragma: no cover
-        id: ID
-        email: str
-        hashed_password: str
-        is_active: bool
-        is_superuser: bool
-        is_verified: bool
+        id: ID | Mapped[Mapped]
+        email: str | Mapped[str]
+        hashed_password: str | Mapped[str]
+        is_active: bool | Mapped[bool]
+        is_superuser: bool | Mapped[bool]
+        is_verified: bool | Mapped[bool]
     else:
         email: Mapped[str] = mapped_column(
             String(length=320), unique=True, index=True, nullable=False
