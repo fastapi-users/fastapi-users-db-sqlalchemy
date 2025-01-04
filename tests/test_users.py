@@ -1,6 +1,8 @@
-from typing import Any, AsyncGenerator, Dict, List
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import String, exc
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -45,12 +47,12 @@ class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, OAuthBase):
 
 class UserOAuth(SQLAlchemyBaseUserTableUUID, OAuthBase):
     first_name: Mapped[str] = mapped_column(String(255), nullable=True)
-    oauth_accounts: Mapped[List[OAuthAccount]] = relationship(
+    oauth_accounts: Mapped[list[OAuthAccount]] = relationship(
         "OAuthAccount", lazy="joined"
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
     engine = create_async_engine(DATABASE_URL)
     sessionmaker = create_async_session_maker(engine)
@@ -65,7 +67,7 @@ async def sqlalchemy_user_db() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
         await connection.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def sqlalchemy_user_db_oauth() -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
     engine = create_async_engine(DATABASE_URL)
     sessionmaker = create_async_session_maker(engine)
@@ -168,8 +170,8 @@ async def test_queries_custom_fields(
 @pytest.mark.asyncio
 async def test_queries_oauth(
     sqlalchemy_user_db_oauth: SQLAlchemyUserDatabase[UserOAuth, UUID_ID],
-    oauth_account1: Dict[str, Any],
-    oauth_account2: Dict[str, Any],
+    oauth_account1: dict[str, Any],
+    oauth_account2: dict[str, Any],
 ):
     user_create = {
         "email": "lancelot@camelot.bt",

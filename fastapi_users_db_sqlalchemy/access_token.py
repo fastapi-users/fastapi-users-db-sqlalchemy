@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Generic, Optional, Type
+from typing import TYPE_CHECKING, Any, Generic, Optional
 
 from fastapi_users.authentication.strategy.db import AP, AccessTokenDatabase
 from fastapi_users.models import ID
@@ -50,7 +50,7 @@ class SQLAlchemyAccessTokenDatabase(Generic[AP], AccessTokenDatabase[AP]):
     def __init__(
         self,
         session: AsyncSession,
-        access_token_table: Type[AP],
+        access_token_table: type[AP],
     ):
         self.session = session
         self.access_token_table = access_token_table
@@ -69,14 +69,14 @@ class SQLAlchemyAccessTokenDatabase(Generic[AP], AccessTokenDatabase[AP]):
         results = await self.session.execute(statement)
         return results.scalar_one_or_none()
 
-    async def create(self, create_dict: Dict[str, Any]) -> AP:
+    async def create(self, create_dict: dict[str, Any]) -> AP:
         access_token = self.access_token_table(**create_dict)
         self.session.add(access_token)
         await self.session.commit()
         await self.session.refresh(access_token)
         return access_token
 
-    async def update(self, access_token: AP, update_dict: Dict[str, Any]) -> AP:
+    async def update(self, access_token: AP, update_dict: dict[str, Any]) -> AP:
         for key, value in update_dict.items():
             setattr(access_token, key, value)
         self.session.add(access_token)

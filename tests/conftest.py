@@ -1,6 +1,5 @@
-import asyncio
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pytest
 from fastapi_users import schemas
@@ -26,16 +25,8 @@ class UserOAuth(User, schemas.BaseOAuthAccountMixin):
     pass
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Force the pytest-asyncio loop to be the main one."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture
-def oauth_account1() -> Dict[str, Any]:
+def oauth_account1() -> dict[str, Any]:
     return {
         "oauth_name": "service1",
         "access_token": "TOKEN",
@@ -46,7 +37,7 @@ def oauth_account1() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def oauth_account2() -> Dict[str, Any]:
+def oauth_account2() -> dict[str, Any]:
     return {
         "oauth_name": "service2",
         "access_token": "TOKEN",

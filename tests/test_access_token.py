@@ -1,8 +1,9 @@
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
-from typing import AsyncGenerator
 
 import pytest
+import pytest_asyncio
 from pydantic import UUID4
 from sqlalchemy import exc
 from sqlalchemy.ext.asyncio import (
@@ -42,7 +43,7 @@ def user_id() -> UUID4:
     return uuid.uuid4()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def sqlalchemy_access_token_db(
     user_id: UUID4,
 ) -> AsyncGenerator[SQLAlchemyAccessTokenDatabase[AccessToken], None]:
