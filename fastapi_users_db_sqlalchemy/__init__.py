@@ -169,6 +169,8 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
         self.session.add(user)
 
         await self.session.commit()
+        await self.session.refresh(oauth_account)
+        await self.session.refresh(user)
 
         return user
 
@@ -182,6 +184,8 @@ class SQLAlchemyUserDatabase(Generic[UP, ID], BaseUserDatabase[UP, ID]):
             setattr(oauth_account, key, value)
         self.session.add(oauth_account)
         await self.session.commit()
+        await self.session.refresh(oauth_account)
+        await self.session.refresh(user)
 
         return user
 
